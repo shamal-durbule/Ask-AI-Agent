@@ -50,6 +50,7 @@ cp .env.example .env
 | `DB_PORT` | `5432` | Host port for PostgreSQL container |
 | `API_PORT` | `8000` | Uvicorn API server port |
 | `VITE_API_PORT` | `8000` | Frontend proxy target (must match `API_PORT`) |
+| `VITE_DEV_PORT` | `3000` | Frontend dev server port |
 | `DATABASE_URL` | `...localhost:5432/...` | Full database connection string (update port to match `DB_PORT`) |
 
 ### 3. Start PostgreSQL
