@@ -8,12 +8,18 @@ class Settings(BaseSettings):
     anthropic_api_key: str = ""
     session_storage_path: str = ".sessions"
     log_level: str = "INFO"
+    api_port: int = 8000
+    db_port: int = 5432
 
     # SQL safety
     max_query_rows: int = 500
     query_timeout_seconds: int = 5
 
-    model_config = {"env_file": ".env", "env_file_encoding": "utf-8"}
+    model_config = {
+        "env_file": ".env",
+        "env_file_encoding": "utf-8",
+        "extra": "ignore",
+    }
 
 
 settings = Settings()

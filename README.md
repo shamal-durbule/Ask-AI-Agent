@@ -43,6 +43,15 @@ cp .env.example .env
 # Edit .env and set your ANTHROPIC_API_KEY
 ```
 
+**Port conflicts?** All ports are configurable via `.env`:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `DB_PORT` | `5432` | Host port for PostgreSQL container |
+| `API_PORT` | `8000` | Uvicorn API server port |
+| `VITE_API_PORT` | `8000` | Frontend proxy target (must match `API_PORT`) |
+| `DATABASE_URL` | `...localhost:5432/...` | Full database connection string (update port to match `DB_PORT`) |
+
 ### 3. Start PostgreSQL
 
 ```bash
@@ -59,8 +68,10 @@ python -m scripts.seed_data
 ### 5. Start the API
 
 ```bash
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.main:app --reload --host 0.0.0.0 --port ${API_PORT:-8000}
 ```
+
+Or simply: `uvicorn app.main:app --reload --port 8000`
 
 ### 6. Start the frontend (optional)
 
@@ -70,7 +81,7 @@ npm install
 npm run dev
 ```
 
-Open http://localhost:3000 to use the chat UI.
+Open http://localhost:3000 to use the chat UI. The frontend proxies `/api` requests to the backend using `VITE_API_PORT`.
 
 ### 7. Try it with curl
 
