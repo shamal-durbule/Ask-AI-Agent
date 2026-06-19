@@ -3,6 +3,7 @@ from sqlalchemy.orm import selectinload
 
 from app.models.lease import Lease, LeaseStatus
 from app.models.tenant import Tenant
+from app.models.unit import Unit
 from app.repositories.base import BaseRepository
 
 
@@ -14,7 +15,9 @@ class TenantRepository(BaseRepository[Tenant]):
         stmt = (
             select(Tenant)
             .options(
-                selectinload(Tenant.leases).selectinload(Lease.unit),
+                selectinload(Tenant.leases)
+                .selectinload(Lease.unit)
+                .selectinload(Unit.property),
             )
             .limit(limit)
             .offset(offset)

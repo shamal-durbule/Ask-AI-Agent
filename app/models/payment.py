@@ -3,10 +3,10 @@ from datetime import datetime
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Numeric
+from sqlalchemy import DateTime, ForeignKey, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, string_enum
 
 if TYPE_CHECKING:
     from app.models.charge import Charge
@@ -27,7 +27,7 @@ class Payment(Base):
     amount: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     paid_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     method: Mapped[PaymentMethod] = mapped_column(
-        Enum(PaymentMethod, native_enum=False, length=20),
+        string_enum(PaymentMethod),
         nullable=False,
     )
 

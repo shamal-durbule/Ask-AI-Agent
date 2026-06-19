@@ -3,10 +3,10 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Enum, ForeignKey, Index, Numeric
+from sqlalchemy import Date, ForeignKey, Index, Numeric
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, string_enum
 
 if TYPE_CHECKING:
     from app.models.charge import Charge
@@ -33,7 +33,7 @@ class Lease(TimestampMixin, Base):
     start_date: Mapped[date] = mapped_column(Date, nullable=False)
     end_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[LeaseStatus] = mapped_column(
-        Enum(LeaseStatus, native_enum=False, length=20),
+        string_enum(LeaseStatus),
         default=LeaseStatus.ACTIVE,
         nullable=False,
     )

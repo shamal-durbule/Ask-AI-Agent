@@ -2,10 +2,10 @@ import enum
 from datetime import datetime
 from typing import TYPE_CHECKING
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base
+from app.models.base import Base, string_enum
 
 if TYPE_CHECKING:
     from app.models.tenant import Tenant
@@ -30,11 +30,11 @@ class Message(Base):
     tenant_id: Mapped[int] = mapped_column(ForeignKey("tenant.id"), nullable=False)
     body: Mapped[str] = mapped_column(Text, nullable=False)
     direction: Mapped[Direction] = mapped_column(
-        Enum(Direction, native_enum=False, length=20),
+        string_enum(Direction),
         nullable=False,
     )
     status: Mapped[MessageStatus] = mapped_column(
-        Enum(MessageStatus, native_enum=False, length=20),
+        string_enum(MessageStatus),
         default=MessageStatus.SENT,
         nullable=False,
     )
@@ -64,7 +64,7 @@ class ScheduledMessage(Base):
     body: Mapped[str] = mapped_column(Text, nullable=False)
     send_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), nullable=False)
     status: Mapped[ScheduledMessageStatus] = mapped_column(
-        Enum(ScheduledMessageStatus, native_enum=False, length=20),
+        string_enum(ScheduledMessageStatus),
         default=ScheduledMessageStatus.SCHEDULED,
         nullable=False,
     )

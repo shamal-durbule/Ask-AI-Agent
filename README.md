@@ -24,8 +24,8 @@ Built with **Strands Agents SDK**, **FastAPI**, **PostgreSQL**, **SQLAlchemy**, 
 ### 1. Clone and setup
 
 ```bash
-git clone <repo-url>
-cd ask-ai-agent
+git clone https://github.com/shamal-durbule/Ask-AI-Agent.git
+cd Ask-AI-Agent
 
 # Create Python virtual environment
 python -m venv .venv

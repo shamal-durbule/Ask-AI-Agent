@@ -2,10 +2,10 @@ import enum
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Enum, ForeignKey, Index, Numeric, SmallInteger, String
+from sqlalchemy import ForeignKey, Index, Numeric, SmallInteger, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, string_enum
 
 if TYPE_CHECKING:
     from app.models.lease import Lease
@@ -27,7 +27,7 @@ class Unit(TimestampMixin, Base):
     bedrooms: Mapped[int] = mapped_column(SmallInteger, nullable=False)
     monthly_rent: Mapped[Decimal] = mapped_column(Numeric(10, 2), nullable=False)
     status: Mapped[UnitStatus] = mapped_column(
-        Enum(UnitStatus, native_enum=False, length=20),
+        string_enum(UnitStatus),
         default=UnitStatus.AVAILABLE,
         nullable=False,
     )

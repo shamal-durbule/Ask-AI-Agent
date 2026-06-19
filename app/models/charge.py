@@ -3,10 +3,10 @@ from datetime import date
 from decimal import Decimal
 from typing import TYPE_CHECKING
 
-from sqlalchemy import Date, Enum, ForeignKey, Index, Numeric, String
+from sqlalchemy import Date, ForeignKey, Index, Numeric, String
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin
+from app.models.base import Base, TimestampMixin, string_enum
 
 if TYPE_CHECKING:
     from app.models.lease import Lease
@@ -39,12 +39,12 @@ class Charge(TimestampMixin, Base):
     amount_paid: Mapped[Decimal] = mapped_column(Numeric(10, 2), default=Decimal("0.00"), nullable=False)
     due_date: Mapped[date] = mapped_column(Date, nullable=False)
     status: Mapped[ChargeStatus] = mapped_column(
-        Enum(ChargeStatus, native_enum=False, length=20),
+        string_enum(ChargeStatus),
         default=ChargeStatus.OPEN,
         nullable=False,
     )
     kind: Mapped[ChargeKind] = mapped_column(
-        Enum(ChargeKind, native_enum=False, length=20),
+        string_enum(ChargeKind),
         default=ChargeKind.RENT,
         nullable=False,
     )

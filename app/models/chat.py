@@ -1,10 +1,10 @@
 import enum
 from datetime import datetime
 
-from sqlalchemy import DateTime, Enum, ForeignKey, Index, String, Text, func
+from sqlalchemy import DateTime, ForeignKey, Index, String, Text, func
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from app.models.base import Base, TimestampMixin, generate_uuid
+from app.models.base import Base, TimestampMixin, generate_uuid, string_enum
 
 
 class MessageRole(str, enum.Enum):
@@ -41,7 +41,7 @@ class ChatMessage(Base):
     id: Mapped[int] = mapped_column(primary_key=True, autoincrement=True)
     session_id: Mapped[str] = mapped_column(ForeignKey("chat_session.id"), nullable=False, index=True)
     role: Mapped[MessageRole] = mapped_column(
-        Enum(MessageRole, native_enum=False, length=20),
+        string_enum(MessageRole),
         nullable=False,
     )
     content: Mapped[str] = mapped_column(Text, nullable=False)
@@ -67,7 +67,7 @@ class ActionLog(Base):
     params_json: Mapped[str] = mapped_column(Text, nullable=False)
     preview: Mapped[str] = mapped_column(Text, nullable=False)
     status: Mapped[ActionStatus] = mapped_column(
-        Enum(ActionStatus, native_enum=False, length=20),
+        string_enum(ActionStatus),
         default=ActionStatus.PENDING,
         nullable=False,
     )
