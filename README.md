@@ -159,7 +159,7 @@ See [docs/architecture.md](docs/architecture.md) for the full system design.
 
 - **Single workspace**: All data belongs to one property management company
 - **SQL safety**: Generated SQL is parsed with sqlglot (SELECT-only), executed in READ ONLY transactions with timeouts
-- **Exactly-once execution**: Write actions use an `action_log` table with CAS status transitions
+- **Exactly-once execution**: Write actions are tracked in an `action_log` table with CAS status transitions (`pending -> approved -> executed`); a retried approval for an already-executed action is a no-op
 - **Session continuity**: Strands FileSessionManager persists conversation state
 - **Clean layering**: Routes -> Services -> Repositories -> Database (no layer skipping)
 

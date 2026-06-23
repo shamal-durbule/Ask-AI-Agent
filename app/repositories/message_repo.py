@@ -22,12 +22,7 @@ class MessageRepository(BaseRepository[Message]):
         return msg
 
     async def list_by_tenant(self, tenant_id: int, *, limit: int = 50) -> list[Message]:
-        stmt = (
-            select(Message)
-            .where(Message.tenant_id == tenant_id)
-            .order_by(Message.sent_at.desc())
-            .limit(limit)
-        )
+        stmt = select(Message).where(Message.tenant_id == tenant_id).order_by(Message.sent_at.desc()).limit(limit)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 

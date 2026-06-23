@@ -10,6 +10,7 @@ class Settings(BaseSettings):
     log_level: str = "INFO"
     api_port: int = 8000
     db_port: int = 5432
+    cors_origins: str = "http://localhost:3000,http://localhost:3001"
 
     # SQL safety
     max_query_rows: int = 500
@@ -20,6 +21,11 @@ class Settings(BaseSettings):
         "env_file_encoding": "utf-8",
         "extra": "ignore",
     }
+
+    @property
+    def cors_origin_list(self) -> list[str]:
+        """Parse the comma-separated CORS origins into a list."""
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
 
 settings = Settings()

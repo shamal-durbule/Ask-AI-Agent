@@ -104,7 +104,7 @@ async def get_session_messages(
 ) -> list[ChatMessageResponse]:
     """Get all messages for a chat session."""
     service = ChatService(db)
+    if not await service.session_exists(session_id):
+        raise HTTPException(status_code=404, detail="Session not found")
     messages = await service.get_messages(session_id)
-    if not messages:
-        raise HTTPException(status_code=404, detail="Session not found or has no messages")
     return [ChatMessageResponse.model_validate(m) for m in messages]

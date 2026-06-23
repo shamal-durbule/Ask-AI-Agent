@@ -8,12 +8,12 @@ from app.repositories.property_repo import PropertyRepository
 from app.repositories.tenant_repo import TenantRepository
 
 __all__ = [
+    "AnalyticsRepository",
     "BaseRepository",
+    "ChargeRepository",
+    "ChatRepository",
+    "LeaseRepository",
+    "MessageRepository",
     "PropertyRepository",
     "TenantRepository",
-    "LeaseRepository",
-    "ChargeRepository",
-    "MessageRepository",
-    "ChatRepository",
-    "AnalyticsRepository",
 ]

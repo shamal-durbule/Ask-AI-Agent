@@ -50,15 +50,17 @@ async def get_properties() -> str:
             ]
             total = len(units)
             occupied = sum(1 for u in units if u["status"] == "leased")
-            result.append({
-                "id": p.id,
-                "name": p.name,
-                "address": p.address,
-                "total_units": total,
-                "occupied_units": occupied,
-                "available_units": total - occupied,
-                "units": units,
-            })
+            result.append(
+                {
+                    "id": p.id,
+                    "name": p.name,
+                    "address": p.address,
+                    "total_units": total,
+                    "occupied_units": occupied,
+                    "available_units": total - occupied,
+                    "units": units,
+                }
+            )
         return _json(result)
 
 
@@ -73,7 +75,7 @@ async def get_tenants() -> str:
         tenants = await repo.list_with_active_leases()
         result = []
         for t in tenants:
-            active = next((l for l in t.leases if l.status.value == "active"), None)
+            active = next((lease for lease in t.leases if lease.status.value == "active"), None)
             tenant_data: dict[str, object] = {
                 "id": t.id,
                 "name": t.name,
@@ -106,15 +108,15 @@ async def get_leases(property_id: int | None = None) -> str:
         leases = await repo.list_active(property_id=property_id)
         result = [
             {
-                "id": l.id,
-                "tenant": l.tenant.name if l.tenant else "N/A",
-                "unit": l.unit.label if l.unit else "N/A",
-                "rent_amount": float(l.rent_amount),
-                "start_date": str(l.start_date),
-                "end_date": str(l.end_date),
-                "status": l.status.value,
+                "id": lease.id,
+                "tenant": lease.tenant.name if lease.tenant else "N/A",
+                "unit": lease.unit.label if lease.unit else "N/A",
+                "rent_amount": float(lease.rent_amount),
+                "start_date": str(lease.start_date),
+                "end_date": str(lease.end_date),
+                "status": lease.status.value,
             }
-            for l in leases
+            for lease in leases
         ]
         return _json(result)
 

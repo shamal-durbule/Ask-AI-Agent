@@ -19,8 +19,13 @@ from app.repositories.analytics_repo import AnalyticsRepository
 logger = logging.getLogger(__name__)
 
 FORBIDDEN_STATEMENTS = (
-    exp.Insert, exp.Update, exp.Delete, exp.Drop, exp.Create,
-    exp.Alter, exp.Command,
+    exp.Insert,
+    exp.Update,
+    exp.Delete,
+    exp.Drop,
+    exp.Create,
+    exp.Alter,
+    exp.Command,
 )
 
 
@@ -43,14 +48,10 @@ def validate_sql(sql: str) -> str:
         raise ValueError("Empty SQL statement")
 
     if isinstance(statement, FORBIDDEN_STATEMENTS):
-        raise ValueError(
-            f"Only SELECT statements are allowed. Got: {type(statement).__name__}"
-        )
+        raise ValueError(f"Only SELECT statements are allowed. Got: {type(statement).__name__}")
 
     if not isinstance(statement, exp.Select):
-        raise ValueError(
-            f"Only SELECT statements are allowed. Got: {type(statement).__name__}"
-        )
+        raise ValueError(f"Only SELECT statements are allowed. Got: {type(statement).__name__}")
 
     # Check for subqueries that modify data
     for node in statement.walk():
@@ -80,11 +81,13 @@ async def get_database_schema() -> str:
         table_name = row["table_name"]
         if table_name not in tables:
             tables[table_name] = []
-        tables[table_name].append({
-            "column": row["column_name"],
-            "type": row["data_type"],
-            "nullable": row["is_nullable"],
-        })
+        tables[table_name].append(
+            {
+                "column": row["column_name"],
+                "type": row["data_type"],
+                "nullable": row["is_nullable"],
+            }
+        )
 
     schema_text = "Database Schema:\n\n"
     for table_name, columns in sorted(tables.items()):

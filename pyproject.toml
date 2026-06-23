@@ -52,7 +52,15 @@ select = [
     "T20",  # flake8-print
     "RUF",  # ruff-specific
 ]
-ignore = ["E501", "T201"]
+ignore = [
+    "E501",   # line length handled by formatter
+    "T201",   # allow print in scripts
+    "B008",   # FastAPI uses Depends() in argument defaults by design
+    "UP042",  # str + Enum mixin is intentional for DB string enums
+]
+
+[tool.ruff.lint.per-file-ignores]
+"scripts/*" = ["T201"]
 
 [tool.ruff.lint.isort]
 known-first-party = ["app"]

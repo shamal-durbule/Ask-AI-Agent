@@ -25,14 +25,16 @@ class AnalyticsRepository:
         via sqlglot before calling this method.
         """
         timeout_ms = settings.query_timeout_seconds * 1000
-        await self._session.execute(text(f"SET LOCAL statement_timeout = '{timeout_ms}'"))
+        # SET TRANSACTION READ ONLY must be issued before any other statement
+        # in the transaction, so it goes first; statement_timeout follows.
         await self._session.execute(text("SET TRANSACTION READ ONLY"))
+        await self._session.execute(text(f"SET LOCAL statement_timeout = '{timeout_ms}'"))
 
         result = await self._session.execute(text(sql))
         columns = list(result.keys())
         rows = result.fetchall()
 
-        return [dict(zip(columns, row)) for row in rows]
+        return [dict(zip(columns, row, strict=False)) for row in rows]
 
     async def get_table_info(self) -> list[dict[str, Any]]:
         """Return schema metadata for all domain tables."""
@@ -53,4 +55,4 @@ class AnalyticsRepository:
             ORDER BY t.table_name, c.ordinal_position
         """)
         result = await self._session.execute(query)
-        return [dict(zip(result.keys(), row)) for row in result.fetchall()]
+        return [dict(zip(result.keys(), row, strict=False)) for row in result.fetchall()]

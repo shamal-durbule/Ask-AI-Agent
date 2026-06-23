@@ -11,13 +11,7 @@ class PropertyRepository(BaseRepository[Property]):
 
     async def list_with_units(self, *, limit: int = 100, offset: int = 0) -> list[Property]:
         """List properties with eagerly loaded units to avoid N+1."""
-        stmt = (
-            select(Property)
-            .options(selectinload(Property.units))
-            .limit(limit)
-            .offset(offset)
-            .order_by(Property.id)
-        )
+        stmt = select(Property).options(selectinload(Property.units)).limit(limit).offset(offset).order_by(Property.id)
         result = await self._session.execute(stmt)
         return list(result.scalars().unique().all())
 

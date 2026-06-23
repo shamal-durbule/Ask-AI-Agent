@@ -5,7 +5,7 @@ Run: python -m scripts.seed_data
 
 import asyncio
 import random
-from datetime import date, datetime, timedelta, timezone
+from datetime import UTC, date, datetime, timedelta
 from decimal import Decimal
 
 from sqlalchemy import text
@@ -69,9 +69,17 @@ async def seed(session: AsyncSession) -> None:
 
     # Clear existing data in reverse FK order
     for table in [
-        "action_log", "chat_message", "chat_session",
-        "scheduled_message", "message", "payment", "charge",
-        "lease", "tenant", "unit", "property",
+        "action_log",
+        "chat_message",
+        "chat_session",
+        "scheduled_message",
+        "message",
+        "payment",
+        "charge",
+        "lease",
+        "tenant",
+        "unit",
+        "property",
     ]:
         await session.execute(text(f"DELETE FROM {table}"))
 
@@ -214,7 +222,7 @@ async def seed(session: AsyncSession) -> None:
                     {
                         "cid": charge_id,
                         "amt": rent,
-                        "paid_at": datetime(pay_date.year, pay_date.month, pay_date.day, tzinfo=timezone.utc),
+                        "paid_at": datetime(pay_date.year, pay_date.month, pay_date.day, tzinfo=UTC),
                         "method": random.choice(PAYMENT_METHODS),
                     },
                 )
@@ -238,10 +246,7 @@ async def seed(session: AsyncSession) -> None:
     for i in range(5):
         tid = tenant_ids[i]
         await session.execute(
-            text(
-                "INSERT INTO message (tenant_id, body, direction, status) "
-                "VALUES (:tid, :body, 'outbound', 'sent')"
-            ),
+            text("INSERT INTO message (tenant_id, body, direction, status) VALUES (:tid, :body, 'outbound', 'sent')"),
             {
                 "tid": tid,
                 "body": f"Hi {TENANTS[i]['name'].split()[0]}, this is a reminder that your rent is due on the 1st. Please let us know if you have any questions.",
@@ -251,7 +256,9 @@ async def seed(session: AsyncSession) -> None:
     await session.commit()
     print("Seed data inserted successfully.")
     print(f"  Properties: {len(PROPERTIES)}")
-    print(f"  Units: {len(unit_ids)} ({len(unit_ids) - len(available_indices)} leased, {len(available_indices)} available)")
+    print(
+        f"  Units: {len(unit_ids)} ({len(unit_ids) - len(available_indices)} leased, {len(available_indices)} available)"
+    )
     print(f"  Tenants: {len(tenant_ids)}")
     print(f"  Leases: {len(lease_data)}")
 

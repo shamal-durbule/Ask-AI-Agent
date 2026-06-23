@@ -9,7 +9,7 @@ Delivery of messages is mocked -- the point is the approval flow.
 
 import json
 import logging
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from strands import tool
 
@@ -43,13 +43,15 @@ async def send_message(tenant_id: int, body: str) -> str:
         await session.commit()
 
         logger.info("Message sent to %s (tenant #%d): %s", tenant.name, tenant_id, body[:100])
-        return json.dumps({
-            "status": "sent",
-            "message_id": message.id,
-            "tenant": tenant.name,
-            "body": body,
-            "note": "Delivery mocked -- message recorded in database.",
-        })
+        return json.dumps(
+            {
+                "status": "sent",
+                "message_id": message.id,
+                "tenant": tenant.name,
+                "body": body,
+                "note": "Delivery mocked -- message recorded in database.",
+            }
+        )
 
 
 @tool
@@ -67,11 +69,11 @@ async def schedule_message(tenant_id: int, body: str, send_at: str) -> str:
     try:
         scheduled_time = datetime.fromisoformat(send_at)
         if scheduled_time.tzinfo is None:
-            scheduled_time = scheduled_time.replace(tzinfo=timezone.utc)
+            scheduled_time = scheduled_time.replace(tzinfo=UTC)
     except ValueError:
         return f"Error: Invalid datetime format '{send_at}'. Use ISO 8601 format."
 
-    if scheduled_time <= datetime.now(timezone.utc):
+    if scheduled_time <= datetime.now(UTC):
         return "Error: Scheduled time must be in the future."
 
     async with async_session_factory() as session:
@@ -91,16 +93,20 @@ async def schedule_message(tenant_id: int, body: str, send_at: str) -> str:
 
         logger.info(
             "Message scheduled for %s to %s (tenant #%d)",
-            send_at, tenant.name, tenant_id,
+            send_at,
+            tenant.name,
+            tenant_id,
         )
-        return json.dumps({
-            "status": "scheduled",
-            "scheduled_message_id": scheduled.id,
-            "tenant": tenant.name,
-            "send_at": send_at,
-            "body": body,
-            "note": "Delivery at scheduled time is mocked.",
-        })
+        return json.dumps(
+            {
+                "status": "scheduled",
+                "scheduled_message_id": scheduled.id,
+                "tenant": tenant.name,
+                "send_at": send_at,
+                "body": body,
+                "note": "Delivery at scheduled time is mocked.",
+            }
+        )
 
 
 @tool
@@ -118,26 +124,33 @@ async def apply_credit(lease_id: int, amount: float, reason: str) -> str:
     if amount <= 0:
         return "Error: Credit amount must be a positive number."
 
-    from decimal import Decimal
+    from decimal import ROUND_HALF_UP, Decimal
+
+    # Convert via str (never via binary float) and round to cents.
+    credit_amount = Decimal(str(amount)).quantize(Decimal("0.01"), rounding=ROUND_HALF_UP)
 
     async with async_session_factory() as session:
         charge_repo = ChargeRepository(session)
         credit = await charge_repo.create_credit(
             lease_id=lease_id,
-            amount=Decimal(str(amount)),
+            amount=credit_amount,
             reason=reason,
         )
         await session.commit()
 
         logger.info(
-            "Credit of $%.2f applied to lease #%d (reason: %s)",
-            amount, lease_id, reason,
+            "Credit of $%s applied to lease #%d (reason: %s)",
+            credit_amount,
+            lease_id,
+            reason,
         )
-        return json.dumps({
-            "status": "applied",
-            "charge_id": credit.id,
-            "lease_id": lease_id,
-            "amount": f"-${amount:.2f}",
-            "reason": reason,
-            "kind": "credit",
-        })
+        return json.dumps(
+            {
+                "status": "applied",
+                "charge_id": credit.id,
+                "lease_id": lease_id,
+                "amount": f"-${credit_amount}",
+                "reason": reason,
+                "kind": "credit",
+            }
+        )

@@ -5,6 +5,7 @@ a write tool, this hook raises an interrupt, pausing the agent until the
 user approves, rejects, or edits the action.
 """
 
+import contextlib
 import json
 import logging
 from typing import Any
@@ -19,15 +20,12 @@ WRITE_TOOLS = frozenset({"send_message", "schedule_message", "apply_credit"})
 def _build_preview(tool_name: str, params: dict[str, Any]) -> str:
     """Build a human-readable preview of the action."""
     if tool_name == "send_message":
-        return (
-            f"Send message to tenant #{params.get('tenant_id')}: "
-            f"\"{params.get('body', '')[:200]}\""
-        )
+        return f'Send message to tenant #{params.get("tenant_id")}: "{params.get("body", "")[:200]}"'
     elif tool_name == "schedule_message":
         return (
             f"Schedule message to tenant #{params.get('tenant_id')} "
             f"for {params.get('send_at')}: "
-            f"\"{params.get('body', '')[:200]}\""
+            f'"{params.get("body", "")[:200]}"'
         )
     elif tool_name == "apply_credit":
         return (
@@ -69,10 +67,8 @@ class ApprovalHook(HookProvider):
         )
 
         if isinstance(response, str):
-            try:
+            with contextlib.suppress(json.JSONDecodeError):
                 response = json.loads(response)
-            except json.JSONDecodeError:
-                pass
 
         if isinstance(response, dict):
             decision = response.get("decision", "reject")

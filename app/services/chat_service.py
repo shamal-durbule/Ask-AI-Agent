@@ -83,12 +83,28 @@ class ChatService:
                     if stop_reason == "interrupt" and hasattr(result, "interrupts"):
                         for interrupt in result.interrupts:
                             reason = interrupt.reason if hasattr(interrupt, "reason") else {}
+                            interrupt_id = interrupt.id if hasattr(interrupt, "id") else ""
+                            action = reason.get("action", "") if isinstance(reason, dict) else ""
+                            params = reason.get("params", {}) if isinstance(reason, dict) else {}
+                            preview = reason.get("preview", "") if isinstance(reason, dict) else str(reason)
+
+                            # Persist a PENDING action so approval is idempotent
+                            # (exactly-once via CAS status transitions on resume).
+                            if interrupt_id and action:
+                                await self._persist_pending_action(
+                                    action_id=interrupt_id,
+                                    session_id=session_id,
+                                    tool_name=action,
+                                    params=params if isinstance(params, dict) else {},
+                                    preview=preview,
+                                )
+
                             yield {
                                 "type": "approval_required",
-                                "interrupt_id": interrupt.id if hasattr(interrupt, "id") else "",
-                                "action": reason.get("action", "") if isinstance(reason, dict) else "",
-                                "params": reason.get("params", {}) if isinstance(reason, dict) else {},
-                                "preview": reason.get("preview", "") if isinstance(reason, dict) else str(reason),
+                                "interrupt_id": interrupt_id,
+                                "action": action,
+                                "params": params,
+                                "preview": preview,
                                 "session_id": session_id,
                             }
                     else:
@@ -103,10 +119,33 @@ class ChatService:
             yield {"type": "error", "message": str(e)}
 
         if full_response:
-            await self._chat_repo.add_message(
-                session_id, MessageRole.ASSISTANT, full_response
-            )
+            await self._chat_repo.add_message(session_id, MessageRole.ASSISTANT, full_response)
             await self._db.commit()
+
+    async def _persist_pending_action(
+        self,
+        action_id: str,
+        session_id: str,
+        tool_name: str,
+        params: dict[str, Any],
+        preview: str,
+    ) -> None:
+        """Record a pending action so its approval can be made idempotent.
+
+        Uses the interrupt id as the action id. If a row already exists (e.g.
+        the stream was retried), we leave the existing status untouched.
+        """
+        existing = await self._chat_repo.get_action_log(action_id)
+        if existing is not None:
+            return
+        await self._chat_repo.create_action_log(
+            action_id=action_id,
+            session_id=session_id,
+            tool_name=tool_name,
+            params=params,
+            preview=preview,
+        )
+        await self._db.commit()
 
     async def handle_approval(
         self,
@@ -117,10 +156,15 @@ class ChatService:
     ) -> AsyncGenerator[dict[str, Any], None]:
         """Handle user's approval/rejection decision and resume the agent.
 
-        The agent is resumed with the interrupt response, continuing from
-        where it paused.
+        Exactly-once: the action is tracked in `action_log` with CAS status
+        transitions (pending -> approved -> executed). A retried approval for
+        an already-executed action is a no-op, so the underlying write tool
+        never runs twice even if the request is retried or the process restarts.
         """
         if decision == "reject":
+            if interrupt_id:
+                await self._chat_repo.reject_action(interrupt_id)
+                await self._db.commit()
             yield {
                 "type": "text",
                 "content": "Action rejected. No changes were made.",
@@ -128,12 +172,45 @@ class ChatService:
             yield {"type": "done", "session_id": session_id, "stop_reason": "rejected"}
             return
 
+        # Idempotency guard: don't re-run an action that already executed.
+        if interrupt_id:
+            existing = await self._chat_repo.get_action_log(interrupt_id)
+            if existing is not None and existing.status == ActionStatus.EXECUTED:
+                yield {
+                    "type": "text",
+                    "content": "This action was already completed. No changes were made.",
+                }
+                yield {
+                    "type": "done",
+                    "session_id": session_id,
+                    "stop_reason": "already_executed",
+                }
+                return
+            if existing is not None and existing.status == ActionStatus.REJECTED:
+                yield {
+                    "type": "text",
+                    "content": "This action was already rejected. No changes were made.",
+                }
+                yield {
+                    "type": "done",
+                    "session_id": session_id,
+                    "stop_reason": "already_rejected",
+                }
+                return
+            # CAS pending -> approved. None means another request already moved
+            # it past pending; we still resume so an approved-but-not-executed
+            # action can complete.
+            await self._chat_repo.approve_action(interrupt_id)
+            await self._db.commit()
+
         # Build the interrupt response payload
         if decision == "edit" and edited_params:
-            response_data = json.dumps({
-                "decision": "edit",
-                "edited_params": edited_params,
-            })
+            response_data = json.dumps(
+                {
+                    "decision": "edit",
+                    "edited_params": edited_params,
+                }
+            )
         else:
             response_data = "approved"
 
@@ -173,6 +250,10 @@ class ChatService:
                 if "result" in event:
                     if active_tool:
                         yield {"type": "tool_end", "tool": active_tool}
+                    # CAS approved -> executed marks exactly-once completion.
+                    if interrupt_id:
+                        await self._chat_repo.mark_executed(interrupt_id)
+                        await self._db.commit()
                     yield {
                         "type": "done",
                         "session_id": session_id,
@@ -184,13 +265,14 @@ class ChatService:
             yield {"type": "error", "message": str(e)}
 
         if full_response:
-            await self._chat_repo.add_message(
-                session_id, MessageRole.ASSISTANT, full_response
-            )
+            await self._chat_repo.add_message(session_id, MessageRole.ASSISTANT, full_response)
             await self._db.commit()
 
     async def list_sessions(self, *, limit: int = 50, offset: int = 0) -> list[ChatSession]:
         return await self._chat_repo.list_sessions(limit=limit, offset=offset)
+
+    async def session_exists(self, session_id: str) -> bool:
+        return await self._chat_repo.get_by_id(session_id) is not None
 
     async def get_messages(self, session_id: str) -> list[ChatMessage]:
         return await self._chat_repo.get_messages(session_id)

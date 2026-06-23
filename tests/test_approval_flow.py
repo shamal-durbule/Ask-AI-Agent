@@ -7,11 +7,7 @@ These tests verify that:
 - Preview messages are generated correctly
 """
 
-import json
-from typing import Any
 from unittest.mock import MagicMock
-
-import pytest
 
 from app.agent.hooks.approval_hook import WRITE_TOOLS, ApprovalHook, _build_preview
 
@@ -45,38 +41,50 @@ class TestPreviewGeneration:
     """Verify human-readable previews for each write tool."""
 
     def test_send_message_preview(self) -> None:
-        preview = _build_preview("send_message", {
-            "tenant_id": 5,
-            "body": "Your rent is due.",
-        })
+        preview = _build_preview(
+            "send_message",
+            {
+                "tenant_id": 5,
+                "body": "Your rent is due.",
+            },
+        )
         assert "tenant #5" in preview
         assert "Your rent is due." in preview
 
     def test_schedule_message_preview(self) -> None:
-        preview = _build_preview("schedule_message", {
-            "tenant_id": 3,
-            "body": "Reminder",
-            "send_at": "2025-02-01T09:00:00",
-        })
+        preview = _build_preview(
+            "schedule_message",
+            {
+                "tenant_id": 3,
+                "body": "Reminder",
+                "send_at": "2025-02-01T09:00:00",
+            },
+        )
         assert "tenant #3" in preview
         assert "2025-02-01" in preview
 
     def test_apply_credit_preview(self) -> None:
-        preview = _build_preview("apply_credit", {
-            "lease_id": 10,
-            "amount": 75,
-            "reason": "late fee waiver",
-        })
+        preview = _build_preview(
+            "apply_credit",
+            {
+                "lease_id": 10,
+                "amount": 75,
+                "reason": "late fee waiver",
+            },
+        )
         assert "$75" in preview
         assert "lease #10" in preview
         assert "late fee waiver" in preview
 
     def test_long_body_truncated(self) -> None:
         long_body = "x" * 500
-        preview = _build_preview("send_message", {
-            "tenant_id": 1,
-            "body": long_body,
-        })
+        preview = _build_preview(
+            "send_message",
+            {
+                "tenant_id": 1,
+                "body": long_body,
+            },
+        )
         assert len(preview) < 300
 
 
@@ -96,7 +104,7 @@ class TestApprovalHookBehavior:
         callback(event)
 
         event.interrupt.assert_not_called()
-        assert not hasattr(event, 'cancel_tool') or event.cancel_tool is None or event.cancel_tool == event.cancel_tool
+        assert not hasattr(event, "cancel_tool") or event.cancel_tool is None or event.cancel_tool == event.cancel_tool
 
     def test_write_tool_triggers_interrupt(self) -> None:
         hook = ApprovalHook()

@@ -23,6 +23,42 @@ logger = logging.getLogger(__name__)
 READ_TOOLS = [get_properties, get_tenants, get_leases, get_overdue_charges]
 ANALYTICS_TOOLS = [get_database_schema, execute_readonly_query]
 
+_SKILL_PATH = Path(__file__).parent / "skills" / "analytics" / "SKILL.md"
+
+
+def _load_analytics_skill() -> str:
+    """Load the analytics skill instructions to fold into the system prompt.
+
+    The frontmatter (between the leading '---' fences) is metadata; only the
+    instruction body is appended so the agent follows the SQL guidance.
+    """
+    try:
+        raw = _SKILL_PATH.read_text(encoding="utf-8")
+    except OSError:
+        logger.warning("Analytics skill file not found at %s", _SKILL_PATH)
+        return ""
+
+    if raw.startswith("---"):
+        parts = raw.split("---", 2)
+        if len(parts) == 3:
+            return parts[2].strip()
+    return raw.strip()
+
+
+_ANALYTICS_SKILL = _load_analytics_skill()
+
+
+def _build_system_prompt() -> str:
+    if not _ANALYTICS_SKILL:
+        return SYSTEM_PROMPT
+    return (
+        f"{SYSTEM_PROMPT}\n\n"
+        "## Analytics Skill\n\n"
+        "When answering data questions, follow this skill:\n\n"
+        f"{_ANALYTICS_SKILL}"
+    )
+
+
 # Write tools imported here so they're available; gated by ApprovalHook
 _write_tools_loaded = False
 _write_tools: list[object] = []
@@ -32,6 +68,7 @@ def _get_write_tools() -> list[object]:
     global _write_tools_loaded, _write_tools
     if not _write_tools_loaded:
         from app.agent.tools.write_tools import apply_credit, schedule_message, send_message
+
         _write_tools = [send_message, schedule_message, apply_credit]
         _write_tools_loaded = True
     return _write_tools
@@ -42,9 +79,7 @@ def _get_model() -> AnthropicModel:
     if not api_key:
         api_key = os.environ.get("ANTHROPIC_API_KEY", "")
     if not api_key:
-        raise RuntimeError(
-            "ANTHROPIC_API_KEY must be set in .env or environment variables"
-        )
+        raise RuntimeError("ANTHROPIC_API_KEY must be set in .env or environment variables")
 
     return AnthropicModel(
         client_args={"api_key": api_key},
@@ -76,7 +111,7 @@ def create_agent(session_id: str) -> Agent:
 
     agent = Agent(
         model=_get_model(),
-        system_prompt=SYSTEM_PROMPT,
+        system_prompt=_build_system_prompt(),
         tools=all_tools,
         hooks=[ApprovalHook()],
         session_manager=_get_session_manager(session_id),

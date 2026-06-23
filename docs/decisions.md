@@ -1,12 +1,12 @@
 # Design Decisions and Tradeoffs
 
-## 1. Strands AgentSkills Plugin vs Custom Sub-Agent
+## 1. Analytics Skill: `SKILL.md` Folded Into the System Prompt
 
-**Decision**: Use the built-in `AgentSkills` plugin with `SKILL.md` for the analytics skill.
+**Decision**: Keep the analytics skill as a `SKILL.md` file (name, description, allowed-tools, and SQL guidance) and load its instruction body into the agent's system prompt at agent-creation time (`factory._build_system_prompt`). The two analytics tools (`get_database_schema`, `execute_readonly_query`) are registered directly on the agent.
 
-**Why**: The plugin implements progressive disclosure natively -- skill metadata appears in the system prompt, and full instructions load on demand via the `skills` tool. This follows the SDK's intended pattern rather than reimplementing skill loading.
+**Why**: This keeps the skill authored as a standalone, reviewable document while guaranteeing the guidance is actually in context for every turn. It avoids depending on SDK-version-specific skill-discovery behavior, which keeps the agent deterministic and easy to test.
 
-**Tradeoff**: The skill runs in the main agent's context rather than an isolated sub-agent. For this use case (read-only SQL), isolation isn't critical. For production, the Meta-Tool pattern (Pattern 3) would provide better context separation.
+**Tradeoff**: We forgo true progressive disclosure (loading skill instructions only on demand). For a single, always-relevant analytics skill this is a reasonable cost; the body is small. For many large skills, on-demand loading or the Meta-Tool / isolated sub-agent pattern would provide better context separation and token efficiency.
 
 ## 2. FileSessionManager vs PostgreSQL Sessions
 
@@ -30,13 +30,13 @@
 
 **Why**: `sqlglot` can parse SQL into an AST, letting us verify the statement type (SELECT only), check for forbidden operations in subqueries, and inject LIMIT if missing. It's more robust than regex-based validation.
 
-**Tradeoff**: sqlglot may not support every PostgreSQL dialect feature perfectly. We mitigate this by also using `SET TRANSACTION READ ONLY` at the database level as a second safety layer.
+**Tradeoff**: sqlglot may not support every PostgreSQL dialect feature perfectly. We mitigate this with defense-in-depth at the database level: each analytics query runs in a transaction that is set `READ ONLY` (issued before any other statement) with a `statement_timeout`, and the result set is capped via an injected `LIMIT`. The production-grade hardening would be to run analytics queries through a dedicated least-privilege PostgreSQL role with only `SELECT` granted, so read-only is enforced by the database regardless of the application path.
 
 ## 5. Single Workspace
 
 **Decision**: All data belongs to a single workspace. No multi-tenant query scoping.
 
-**Why**: Reduces complexity for a take-home assignment. The auth middleware stub (`X-Workspace-Id` header) is in place, so adding workspace-scoped queries would be straightforward.
+**Why**: Reduces complexity for a take-home assignment. The auth dependency (`get_workspace_id`, reading the `X-Workspace-Id` header and defaulting to `'default'`) is wired into the REST read endpoints, so every request resolves a workspace id today; adding workspace-scoped queries is then a matter of threading that id into the repositories.
 
 **What I'd do with more time**: Add a `workspace_id` column to all domain tables, add a `workspace_id` parameter to all repository methods, and inject it via the auth middleware dependency.
 

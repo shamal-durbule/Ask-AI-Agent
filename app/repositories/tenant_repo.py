@@ -15,9 +15,7 @@ class TenantRepository(BaseRepository[Tenant]):
         stmt = (
             select(Tenant)
             .options(
-                selectinload(Tenant.leases)
-                .selectinload(Lease.unit)
-                .selectinload(Unit.property),
+                selectinload(Tenant.leases).selectinload(Lease.unit).selectinload(Unit.property),
             )
             .limit(limit)
             .offset(offset)

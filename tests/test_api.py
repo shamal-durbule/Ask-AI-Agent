@@ -3,10 +3,6 @@
 These test the route layer behavior with mocked services.
 """
 
-from unittest.mock import AsyncMock, patch
-
-import pytest
-
 
 class TestHealthEndpoint:
     """Test the health check endpoint."""

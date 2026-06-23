@@ -1,5 +1,5 @@
 import json
-from datetime import datetime, timezone
+from datetime import UTC, datetime
 
 from sqlalchemy import select, update
 
@@ -17,12 +17,7 @@ class ChatRepository(BaseRepository[ChatSession]):
         return chat_session
 
     async def list_sessions(self, *, limit: int = 50, offset: int = 0) -> list[ChatSession]:
-        stmt = (
-            select(ChatSession)
-            .order_by(ChatSession.updated_at.desc())
-            .limit(limit)
-            .offset(offset)
-        )
+        stmt = select(ChatSession).order_by(ChatSession.updated_at.desc()).limit(limit).offset(offset)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
@@ -44,20 +39,12 @@ class ChatRepository(BaseRepository[ChatSession]):
         return msg
 
     async def get_messages(self, session_id: str) -> list[ChatMessage]:
-        stmt = (
-            select(ChatMessage)
-            .where(ChatMessage.session_id == session_id)
-            .order_by(ChatMessage.created_at)
-        )
+        stmt = select(ChatMessage).where(ChatMessage.session_id == session_id).order_by(ChatMessage.created_at)
         result = await self._session.execute(stmt)
         return list(result.scalars().all())
 
     async def update_session_title(self, session_id: str, title: str) -> None:
-        stmt = (
-            update(ChatSession)
-            .where(ChatSession.id == session_id)
-            .values(title=title)
-        )
+        stmt = update(ChatSession).where(ChatSession.id == session_id).values(title=title)
         await self._session.execute(stmt)
 
     # -- Action Log --
@@ -112,7 +99,7 @@ class ChatRepository(BaseRepository[ChatSession]):
         stmt = (
             update(ActionLog)
             .where(ActionLog.id == action_id, ActionLog.status == ActionStatus.APPROVED)
-            .values(status=ActionStatus.EXECUTED, executed_at=datetime.now(timezone.utc))
+            .values(status=ActionStatus.EXECUTED, executed_at=datetime.now(UTC))
             .returning(ActionLog)
         )
         result = await self._session.execute(stmt)
